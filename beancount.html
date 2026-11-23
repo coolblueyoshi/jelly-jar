@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bean Count</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bagel+Fat+One&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* Layout idea: candy-shop counter. Jar on the left as the hero, guess slate on the right; leaderboard swaps in as a second tab. */
+:root{
+  --bg:#2b1b4a; --panel:#3a2663; --ink:#fff6ea; --muted:#c9b8ee;
+  --accent:#ff5c8a; --lime:#b6f23a; --sky:#5cd0ff; --gold:#ffcf4a;
+  --display:'Bagel Fat One','Arial Rounded MT Bold',system-ui,sans-serif;
+  --body:'DM Sans',system-ui,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.45;
+  background-image:radial-gradient(circle at 20% 0%,#4a2f85 0,transparent 45%),radial-gradient(circle at 90% 100%,#5a2a6e 0,transparent 40%)}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--sky);outline-offset:2px}
+.wrap{max-width:1040px;margin:0 auto;padding:20px 16px 48px}
+header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px 20px}
+.logo{font-family:var(--display);font-size:2rem;letter-spacing:.5px;margin:0;line-height:1}
+.logo span{color:var(--accent)}
+.tabs{display:flex;gap:6px;background:#00000040;padding:5px;border-radius:999px}
+.tab{border:0;background:transparent;padding:9px 20px;border-radius:999px;font-weight:700;color:var(--muted);cursor:pointer}
+.tab[aria-selected="true"]{background:var(--lime);color:#2b1b4a}
+.meta{display:flex;gap:16px;align-items:center;color:var(--muted);font-size:.9rem}
+.meta b{color:var(--ink);font-variant-numeric:tabular-nums}
+.who{border:1px dashed var(--muted);background:transparent;border-radius:999px;padding:6px 14px;cursor:pointer;color:var(--muted)}
+main{margin-top:24px}
+.game{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px;align-items:start}
+@media(max-width:820px){.game{grid-template-columns:minmax(0,1fr)}}
+.jarbox{text-align:center}
+.jarbox svg{width:100%;max-width:420px;height:auto;filter:drop-shadow(0 18px 24px #0006)}
+.j3{width:100%;max-width:420px;margin:0 auto;cursor:grab;touch-action:pan-y;user-select:none}
+.j3:active{cursor:grabbing}
+.j3 canvas{display:block;width:100%;height:auto}
+.jarcap{font-family:var(--display);font-size:1.1rem;margin:6px 0 0;color:var(--gold)}
+.jarsub{margin:2px 0 0;color:var(--muted);font-size:.9rem}
+.slate{background:var(--panel);border-radius:24px;padding:22px;box-shadow:0 0 0 2px #ffffff14 inset}
+h2{font-family:var(--display);font-weight:400;font-size:1.6rem;margin:0 0 4px}
+.lead{margin:0 0 16px;color:var(--muted)}
+.rows{display:grid;gap:8px;margin-bottom:16px}
+.row{display:grid;grid-template-columns:28px 1fr auto;align-items:center;gap:10px;background:#00000033;border-radius:14px;padding:10px 12px;min-height:58px}
+.row .n{font-family:var(--display);color:var(--muted)}
+.row.empty{opacity:.45}
+.row .num{font-family:var(--display);font-size:1.35rem;letter-spacing:2px;font-variant-numeric:tabular-nums}
+.row .hint{font-size:.85rem;color:var(--muted)}
+.heat{height:6px;border-radius:9px;background:#ffffff1a;margin-top:5px;overflow:hidden}
+.heat i{display:block;height:100%;border-radius:9px}
+.tag{font-weight:700;font-size:.85rem;padding:5px 10px;border-radius:999px;white-space:nowrap}
+.tag.up{background:var(--sky);color:#12304a}
+.tag.down{background:var(--accent);color:#3a0a1c}
+.tag.hit{background:var(--lime);color:#2b1b4a}
+form{display:flex;gap:10px;flex-wrap:wrap}
+#guess{flex:1 1 160px;min-width:0;background:#fff6ea;color:#2b1b4a;border:0;border-radius:14px;padding:12px 16px;font-family:var(--display);font-size:1.6rem;letter-spacing:6px;text-align:center}
+#guess::placeholder{color:#b9a9d6;letter-spacing:6px}
+.go{border:0;background:var(--accent);color:#fff;font-weight:700;border-radius:14px;padding:0 26px;min-height:52px;cursor:pointer;font-size:1rem;box-shadow:0 4px 0 #b32a57}
+.go:active{transform:translateY(3px);box-shadow:0 1px 0 #b32a57}
+.go[disabled]{opacity:.4;cursor:not-allowed}
+.err{min-height:22px;margin:8px 2px 0;color:var(--gold);font-size:.9rem}
+.result{display:none;margin-top:14px;padding:16px;border-radius:16px;background:#00000040}
+.result.show{display:block}
+.result h3{margin:0 0 4px;font-family:var(--display);font-weight:400;font-size:1.3rem}
+.result p{margin:0 0 10px;color:var(--muted)}
+.share{border:2px solid var(--lime);background:transparent;color:var(--lime);font-weight:700;border-radius:12px;padding:9px 18px;cursor:pointer}
+.how{margin:18px 0 0;padding:0;list-style:none;display:grid;gap:6px;color:var(--muted);font-size:.9rem}
+.how b{color:var(--ink)}
+/* leaderboard */
+.lb{background:var(--panel);border-radius:24px;padding:22px;box-shadow:0 0 0 2px #ffffff14 inset}
+.lbhead{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;align-items:baseline;margin-bottom:12px}
+.lbnote{color:var(--muted);font-size:.9rem}
+.pills{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.pill{background:#00000033;border-radius:12px;padding:8px 12px;font-size:.85rem;color:var(--muted)}
+.pill b{display:block;font-family:var(--display);font-weight:400;font-size:1.2rem;color:var(--ink)}
+.scroll{max-height:520px;overflow:auto;border-radius:14px;background:#00000026}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th,td{padding:10px 14px;text-align:left}
+th{position:sticky;top:0;background:#25173f;color:var(--muted);font-size:.75rem;text-transform:uppercase;letter-spacing:1px}
+td.r,th.r{text-align:right}
+tbody tr:nth-child(even){background:#ffffff08}
+tr.me{background:var(--gold)!important;color:#2b1b4a;font-weight:700}
+.medal{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;font-family:var(--display);font-size:.85rem;background:#ffffff1a}
+.m1{background:var(--gold);color:#2b1b4a}.m2{background:#d9dde8;color:#2b1b4a}.m3{background:#e2915a;color:#2b1b4a}
+.dots{letter-spacing:3px}
+[hidden]{display:none!important}
+/* phones */
+body{overflow-x:hidden}
+.row>div{min-width:0}
+@media(max-width:820px){
+  .wrap{padding:14px 12px 40px}
+  header{display:grid;grid-template-columns:1fr auto;gap:10px 12px;align-items:center}
+  .logo{font-size:1.6rem}
+  .tabs{grid-column:1/-1;order:3;width:100%}
+  .tab{flex:1;padding:10px 8px}
+  .meta{flex-direction:column;align-items:flex-end;gap:4px;font-size:.8rem}
+  main{margin-top:16px}
+  .game{gap:16px}
+  .jarbox svg,.j3{max-width:min(250px,62vw)}
+  .jarcap{font-size:1rem}
+  .jarsub{font-size:.85rem}
+  .slate,.lb{padding:16px;border-radius:20px}
+  h2{font-size:1.35rem}
+  .row{grid-template-columns:22px minmax(0,1fr) auto;gap:8px;padding:8px 10px;min-height:54px}
+  .row .num{font-size:1.2rem}
+  .tag{font-size:.75rem;padding:4px 8px}
+  #guess{font-size:1.4rem;letter-spacing:4px;padding:12px 10px}
+  .go{flex:1 1 100%;min-height:50px}
+  .scroll{max-height:60vh}
+  th,td{padding:9px 8px;font-size:.9rem}
+  .pills{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+  th{letter-spacing:.3px;font-size:.68rem}
+  td{white-space:nowrap}
+  .dots{letter-spacing:0;font-size:.8rem}
+  th,td{padding:9px 6px}
+}
+@media(max-width:360px){.logo{font-size:1.4rem}.meta{font-size:.75rem}}
+
+@media(prefers-reduced-motion:no-preference){
+  .row.fresh{animation:pop .35s ease-out}
+  @keyframes pop{from{transform:scale(.94);opacity:0}to{transform:none;opacity:1}}
+  .lid{transform-origin:200px 70px;animation:wob 6s ease-in-out infinite}
+  @keyframes wob{0%,92%,100%{transform:rotate(0)}95%{transform:rotate(-1.6deg)}98%{transform:rotate(1.2deg)}}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1 class="logo">Bean<span>Count</span></h1>
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" id="tab-play" aria-selected="true" aria-controls="view-play">Play</button>
+      <button class="tab" role="tab" id="tab-lb" aria-selected="false" aria-controls="view-lb">Leaderboard</button>
+    </div>
+    <div class="meta">
+      <span>New jar in <b id="countdown">--:--:--</b></span>
+      <button class="who" id="who" type="button">Playing as guest</button>
+    </div>
+  </header>
+
+  <main>
+    <section id="view-play" class="game" role="tabpanel" aria-labelledby="tab-play">
+      <div class="jarbox">
+        <div id="jar3d" class="j3" hidden></div>
+        <svg id="jar" viewBox="0 0 400 490" role="img" aria-label="A cartoon jar full of jelly beans"></svg>
+        <p class="jarcap" id="jarcap">Jar #1</p>
+        <p class="jarsub">How many jelly beans are inside?</p>
+      </div>
+
+      <div class="slate">
+        <h2>Take your guess</h2>
+        <p class="lead">Five guesses. Every guess is a five digit number from 00000 to 30000.</p>
+        <div class="rows" id="rows" aria-live="polite"></div>
+        <form id="form" autocomplete="off" novalidate>
+          <input id="guess" inputmode="numeric" maxlength="5" placeholder="00000" aria-label="Your five digit guess">
+          <button class="go" id="go" type="submit">Guess</button>
+        </form>
+        <p class="err" id="err" role="alert"></p>
+        <div class="result" id="result">
+          <h3 id="rtitle"></h3>
+          <p id="rbody"></p>
+          <button class="share" id="share" type="button">Copy result</button>
+        </div>
+        <ul class="how">
+          <li><b>Higher or lower.</b> Each guess tells you which way to go and how far off you are.</li>
+          <li><b>Round counts.</b> Every jar holds between 1,000 and 30,000 beans, and the count always ends in 0 or 5.</li>
+          <li><b>Every bean counts.</b> The jar is drawn bean for bean. Nothing in it is filler.</li>
+          <li><b>Sweet spot.</b> Land within 1% of the real count to win. Fewer guesses rank higher.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="view-lb" class="lb" role="tabpanel" aria-labelledby="tab-lb" hidden>
+      <div class="lbhead">
+        <h2>Today's top 150</h2>
+        <span class="lbnote">Sample data for this preview. Resets at 12:00 AM ET.</span>
+      </div>
+      <div class="pills" id="pills"></div>
+      <div class="scroll">
+        <table>
+          <thead><tr><th>Rank</th><th>Player</th><th>Guesses</th><th class="r">Off by</th></tr></thead>
+          <tbody id="lbody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+  /* ---------- date + seed (all days roll over at midnight Eastern) ---------- */
+  function etParts(d){
+    var p=new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).formatToParts(d||new Date());
+    var o={};p.forEach(function(x){o[x.type]=x.value});return o;
+  }
+  var t=etParts(), dayKey=t.year+'-'+t.month+'-'+t.day;
+  function hash(s){var h=2166136261;for(var i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return h>>>0}
+  function rng(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;var x=Math.imul(seed^seed>>>15,1|seed);x=x+Math.imul(x^x>>>7,61|x)^x;return((x^x>>>14)>>>0)/4294967296}}
+  var seed=hash('beancount:'+dayKey), R=rng(seed);
+  var ANSWER=5*(200+Math.floor(R()*5801));       // always a multiple of 5 (ends in 0 or 5). Demo only: the real answer would live on the server.
+  var jarNo=Math.floor((Date.UTC(+t.year,+t.month-1,+t.day)-Date.UTC(2026,10,23))/864e5)+1;
+  document.getElementById('jarcap').textContent='Jar #'+jarNo+' · '+new Date(+t.year,+t.month-1,+t.day).toLocaleDateString('en-US',{month:'long',day:'numeric'});
+
+  /* ---------- countdown ---------- */
+  function tick(){
+    var n=etParts(), s=(+n.hour)*3600+(+n.minute)*60+(+n.second), left=86400-s;
+    var h=Math.floor(left/3600),m=Math.floor(left%3600/60),x=left%60;
+    document.getElementById('countdown').textContent=[h,m,x].map(function(v){return String(v).padStart(2,'0')}).join(':');
+  }
+  tick();setInterval(tick,1000);
+
+  /* ---------- the jar (cartoon, seeded so each day looks different) ---------- */
+  var NS='http://www.w3.org/2000/svg', jar=document.getElementById('jar'), jr=rng(seed^0x9e3779b9);
+  var palettes=[
+    ['#ff5c8a','#ffcf4a','#b6f23a','#5cd0ff','#ff8a3d','#b07cff','#fff6ea'],
+    ['#ff3d6e','#ff9f1c','#2ec4b6','#ffe66d','#9b5de5','#f15bb5','#fff'],
+    ['#e63946','#ffb703','#8ac926','#1982c4','#ff70a6','#6a4c93','#ffd6a5']
+  ];
+  var pal=palettes[Math.floor(jr()*palettes.length)];
+  var lidCol=['#ff5c8a','#5cd0ff','#ffcf4a','#b6f23a'][Math.floor(jr()*4)];
+  var bodyPath='M92 112 L92 128 Q40 150 40 214 L40 424 Q40 466 84 466 L316 466 Q360 466 360 424 L360 214 Q360 150 308 128 L308 112 Z';
+  var svg='<defs><clipPath id="cp"><path d="'+bodyPath+'"/></clipPath>'+
+    '<linearGradient id="gl" x1="0" x2="1"><stop offset="0" stop-color="#fff" stop-opacity=".28"/><stop offset=".25" stop-color="#fff" stop-opacity=".04"/><stop offset=".8" stop-color="#fff" stop-opacity=".02"/><stop offset="1" stop-color="#fff" stop-opacity=".2"/></linearGradient></defs>'+
+    '<ellipse cx="200" cy="474" rx="150" ry="10" fill="#000" opacity=".25"/>'+
+    '<path d="'+bodyPath+'" fill="#d9f3ff" fill-opacity=".14"/><g clip-path="url(#cp)">';
+  var beans=[];
+  for(var i=0;i<720;i++){
+    var x=44+jr()*312, y=172+jr()*296;
+    beans.push([x,y,pal[Math.floor(jr()*pal.length)],jr()*180,12+jr()*4]);
+  }
+  beans.sort(function(a,b){return a[1]-b[1]});
+  beans.forEach(function(b){
+    svg+='<g transform="translate('+b[0].toFixed(1)+' '+b[1].toFixed(1)+') rotate('+b[3].toFixed(0)+')">'+
+      '<ellipse rx="'+b[4].toFixed(1)+'" ry="'+(b[4]*.64).toFixed(1)+'" fill="'+b[2]+'" stroke="#2b1b4a" stroke-opacity=".55" stroke-width="1.6"/>'+
+      '<ellipse cx="'+(-b[4]*.3).toFixed(1)+'" cy="'+(-b[4]*.25).toFixed(1)+'" rx="'+(b[4]*.3).toFixed(1)+'" ry="'+(b[4]*.14).toFixed(1)+'" fill="#fff" opacity=".7"/></g>';
+  });
+  svg+='</g><path d="'+bodyPath+'" fill="url(#gl)"/>'+
+    '<path d="'+bodyPath+'" fill="none" stroke="#eaf9ff" stroke-width="5" stroke-linejoin="round" opacity=".85"/>'+
+    '<path d="M64 224 Q60 300 64 400" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" opacity=".55"/>'+
+    '<g class="lid"><rect x="78" y="62" width="244" height="52" rx="14" fill="'+lidCol+'" stroke="#2b1b4a" stroke-width="4"/>'+
+    '<g stroke="#2b1b4a" stroke-opacity=".35" stroke-width="3" stroke-linecap="round">';
+  for(var k=0;k<9;k++){svg+='<line x1="'+(102+k*24)+'" y1="74" x2="'+(102+k*24)+'" y2="102"/>'}
+  svg+='</g><rect x="90" y="68" width="220" height="8" rx="4" fill="#fff" opacity=".35"/></g>'+
+    '<g transform="rotate(-4 200 330)"><rect x="140" y="290" width="120" height="76" rx="10" fill="#fff6ea" stroke="#2b1b4a" stroke-width="3.5"/>'+
+    '<text x="200" y="322" text-anchor="middle" font-family="Bagel Fat One, Arial Rounded MT Bold, sans-serif" font-size="22" fill="#2b1b4a">JELLY</text>'+
+    '<text x="200" y="348" text-anchor="middle" font-family="Bagel Fat One, Arial Rounded MT Bold, sans-serif" font-size="22" fill="#ff5c8a">BEANS</text></g>';
+  jar.innerHTML=svg;
+
+  /* ---------- 3D cartoon jar (three.js). The SVG above stays as the fallback if WebGL is unavailable. ---------- */
+  try{
+    if(!window.THREE)throw new Error('no three');
+    var T=THREE, box=document.getElementById('jar3d');
+    var ren=new T.WebGLRenderer({antialias:true,alpha:true});
+    ren.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+    box.hidden=false;box.appendChild(ren.domElement);
+    var sc=new T.Scene(), cam=new T.PerspectiveCamera(32,420/500,.1,60);
+    cam.position.set(0,3.4,12);cam.lookAt(0,2.4,0);
+    sc.add(new T.AmbientLight(0xffffff,.8));
+    var dl=new T.DirectionalLight(0xffffff,.85);dl.position.set(4,8,6);sc.add(dl);
+    var tone=new T.DataTexture(new Uint8Array([90,175,255]),3,1,T.LuminanceFormat);
+    tone.minFilter=tone.magFilter=T.NearestFilter;tone.needsUpdate=true;
+    var INK=0x2b1b4a, J=new T.Group();sc.add(J);
+
+    // glass body, lathed from a cartoon profile (radius, height)
+    var prof=[[0,0],[1.2,0],[1.5,.12],[1.65,.5],[1.68,1.2],[1.68,3],[1.62,3.6],[1.35,4.05],[1,4.3],[.96,4.5],[.96,4.75]];
+    var glass=new T.Mesh(new T.LatheGeometry(prof.map(function(p){return new T.Vector2(p[0],p[1])}),56),
+      new T.MeshPhongMaterial({color:0xcdeeff,transparent:true,opacity:.26,shininess:140,specular:0xffffff,side:T.DoubleSide,depthWrite:false}));
+    glass.renderOrder=3;J.add(glass);
+    var glassLine=new T.Mesh(new T.LatheGeometry(prof.map(function(p){return new T.Vector2(p[0]*1.012,p[1])}),56),
+      new T.MeshBasicMaterial({color:INK,side:T.BackSide,transparent:true,opacity:.55}));
+    J.add(glassLine);
+    var rim=new T.Mesh(new T.TorusGeometry(.97,.09,10,48),new T.MeshPhongMaterial({color:0xeaf9ff,transparent:true,opacity:.7,shininess:100}));
+    rim.rotation.x=Math.PI/2;rim.position.y=4.75;J.add(rim);
+
+    function radiusAt(y){for(var i=1;i<prof.length;i++){if(y<=prof[i][1]){var a=prof[i-1],b=prof[i],f=(y-a[1])/((b[1]-a[1])||1);return a[0]+(b[0]-a[0])*f}}return prof[prof.length-1][0]}
+
+    // jelly beans: one instance per bean, exactly ANSWER of them, packed on a jittered lattice so none overlap.
+    // The lattice spacing is solved so ANSWER beans fill the jar to a fixed height; bigger counts mean smaller beans.
+    var FILL=3.3, pr=rng(seed^0x1234abcd);
+    function lattice(d){
+      var a=.45*d, pts=[], R0=1.68, n=Math.ceil(R0/d)+1;
+      for(var iy=0;;iy++){
+        var y=a+.03+iy*d; if(y>FILL)break;
+        var lim=radiusAt(y)-a-.02;
+        if(lim<=0)continue;
+        for(var ix=-n;ix<=n;ix++)for(var iz=-n;iz<=n;iz++){
+          var x=ix*d,z=iz*d;
+          if(x*x+z*z<=lim*lim)pts.push([x,y,z]);
+        }
+      }
+      return pts;
+    }
+    function countAt(d){
+      var a=.45*d,c=0,n=Math.ceil(1.68/d)+1;
+      for(var iy=0;;iy++){
+        var y=a+.03+iy*d;if(y>FILL)break;
+        var lim=radiusAt(y)-a-.02;if(lim<=0)continue;
+        var l2=lim*lim;
+        for(var ix=-n;ix<=n;ix++){var x2=ix*d*ix*d;if(x2>l2)continue;for(var iz=-n;iz<=n;iz++){if(x2+iz*d*iz*d<=l2)c++}}
+      }
+      return c;
+    }
+    var lo=.03,hi=.7;
+    for(var it=0;it<28;it++){var mid=(lo+hi)/2;if(countAt(mid)>=ANSWER)lo=mid;else hi=mid}
+    var D=lo, all=lattice(D);
+    all.forEach(function(p){p[1]+=(pr()-.5)*D*.08});
+    all.sort(function(p,q){return p[1]-q[1]});
+    var N=Math.min(ANSWER,all.length);
+    all=all.slice(0,N);
+    var detail=N>9000?[6,4]:N>2500?[8,6]:[14,10];
+    var bg=new T.SphereGeometry(1,detail[0],detail[1]);
+    var bm=new T.InstancedMesh(bg,new T.MeshToonMaterial({color:0xffffff,gradientMap:tone}),N);
+    var showLine=N<=12000;
+    var bo=showLine?new T.InstancedMesh(bg,new T.MeshBasicMaterial({color:INK,side:T.BackSide}),N):null;
+    var m4=new T.Matrix4(),qt=new T.Quaternion(),eu=new T.Euler(),ps=new T.Vector3(),sc3=new T.Vector3(),col=new T.Color();
+    for(var bi=0;bi<N;bi++){
+      var p=all[bi], k=.9+pr()*.1;
+      ps.set(p[0]+(pr()-.5)*D*.06,p[1],p[2]+(pr()-.5)*D*.06);
+      eu.set(pr()*3.14,pr()*3.14,pr()*3.14);qt.setFromEuler(eu);
+      sc3.set(.45*D*k,.3*D*k,.3*D*k);m4.compose(ps,qt,sc3);bm.setMatrixAt(bi,m4);
+      if(bo){var ex=.07*D;sc3.set(.45*D*k+ex,.3*D*k+ex,.3*D*k+ex);m4.compose(ps,qt,sc3);bo.setMatrixAt(bi,m4)}
+      col.set(pal[Math.floor(pr()*pal.length)]);bm.setColorAt(bi,col);
+    }
+    bm.instanceMatrix.needsUpdate=true;bm.instanceColor.needsUpdate=true;
+    if(bo){bo.instanceMatrix.needsUpdate=true;J.add(bo)}
+    J.add(bm);
+    window.__beanCount=N;
+
+    // lid
+    var lidMat=new T.MeshToonMaterial({color:new T.Color(lidCol),gradientMap:tone});
+    var lid=new T.Mesh(new T.CylinderGeometry(1.1,1.1,.55,48),lidMat);lid.position.y=5.0;J.add(lid);
+    var lidO=new T.Mesh(new T.CylinderGeometry(1.1,1.1,.55,48),new T.MeshBasicMaterial({color:INK,side:T.BackSide}));
+    lidO.scale.set(1.05,1.12,1.05);lidO.position.y=5.0;J.add(lidO);
+    for(var ri=0;ri<2;ri++){var rg=new T.Mesh(new T.TorusGeometry(1.1,.035,8,48),new T.MeshBasicMaterial({color:INK,transparent:true,opacity:.4}));rg.rotation.x=Math.PI/2;rg.position.y=4.9+ri*.2;J.add(rg)}
+
+    // curved paper label painted on a canvas
+    var lc=document.createElement('canvas');lc.width=512;lc.height=256;var cx=lc.getContext('2d');
+    cx.fillStyle='#fff6ea';cx.fillRect(0,0,512,256);
+    cx.lineWidth=10;cx.strokeStyle='#2b1b4a';cx.strokeRect(5,5,502,246);
+    cx.textAlign='center';cx.fillStyle='#2b1b4a';cx.font='92px "Bagel Fat One", "Arial Rounded MT Bold", sans-serif';cx.fillText('JELLY',256,108);
+    cx.fillStyle='#ff5c8a';cx.fillText('BEANS',256,205);
+    var lt=new T.CanvasTexture(lc);
+    var label=new T.Mesh(new T.CylinderGeometry(1.7,1.7,1.25,48,1,true,-.95,1.9),new T.MeshBasicMaterial({map:lt,polygonOffset:true,polygonOffsetFactor:-1}));
+    label.position.y=1.9;label.renderOrder=2;J.add(label);
+
+    // soft contact shadow (does not spin)
+    var sh=document.createElement('canvas');sh.width=sh.height=128;var sx=sh.getContext('2d');
+    var gr=sx.createRadialGradient(64,64,4,64,64,62);gr.addColorStop(0,'rgba(0,0,0,.55)');gr.addColorStop(1,'rgba(0,0,0,0)');sx.fillStyle=gr;sx.fillRect(0,0,128,128);
+    var shm=new T.Mesh(new T.PlaneGeometry(5.2,5.2),new T.MeshBasicMaterial({map:new T.CanvasTexture(sh),transparent:true,depthWrite:false}));
+    shm.rotation.x=-Math.PI/2;shm.position.y=-.02;sc.add(shm);
+
+    function fit(){var w=box.clientWidth||420;ren.setSize(w,Math.round(w*500/420))}
+    fit();window.addEventListener('resize',fit);
+    var calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches, drag=false, lx=0, t0=0;
+    J.rotation.y=-.35;
+    box.addEventListener('pointerdown',function(e){drag=true;lx=e.clientX;try{box.setPointerCapture(e.pointerId)}catch(_){}});
+    box.addEventListener('pointermove',function(e){if(drag){J.rotation.y+=(e.clientX-lx)*.012;lx=e.clientX}});
+    ['pointerup','pointercancel'].forEach(function(n){box.addEventListener(n,function(){drag=false})});
+    (function loop(){
+      t0+=.016;
+      if(!drag&&!calm)J.rotation.y+=.005;
+      J.position.y=calm?0:Math.sin(t0*1.4)*.06;
+      ren.render(sc,cam);requestAnimationFrame(loop);
+    })();
+    jar.style.display='none';
+  }catch(err){
+    var b3=document.getElementById('jar3d');if(b3)b3.hidden=true;
+    var js=document.querySelector('.jarsub');if(js)js.textContent='3D view unavailable here. This picture is only an illustration.';
+  }
+
+  /* ---------- game state ---------- */
+  var MAX=5, KEY='beancount:'+dayKey, state={guesses:[],done:false,won:false};
+  try{var s=JSON.parse(localStorage.getItem(KEY)||'null');if(s)state=s}catch(e){}
+  function save(){try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}}
+  var rowsEl=document.getElementById('rows'), guessEl=document.getElementById('guess'), errEl=document.getElementById('err'),
+      goEl=document.getElementById('go'), resEl=document.getElementById('result');
+
+  function fmt(n){return n.toLocaleString('en-US')}
+  function pct(g){return Math.abs(g-ANSWER)/ANSWER*100}
+  function heatColor(c){return 'hsl('+Math.round(200-c*200)+' 90% 58%)'} // blue (cold) to red (hot)
+  function heatLabel(p){return p<=1?'Sweet spot':p<5?'Scorching':p<15?'Hot':p<35?'Warm':p<70?'Cool':'Ice cold'}
+
+  function render(fresh){
+    rowsEl.innerHTML='';
+    for(var i=0;i<MAX;i++){
+      var d=document.createElement('div'),g=state.guesses[i];
+      d.className='row'+(g==null?' empty':'')+(fresh&&i===state.guesses.length-1?' fresh':'');
+      if(g==null){d.innerHTML='<span class="n">'+(i+1)+'</span><span class="hint">Guess '+(i+1)+'</span><span></span>';}
+      else{
+        var v=+g,p=pct(v),hit=p<=1,close=Math.max(0,1-p/60);
+        d.innerHTML='<span class="n">'+(i+1)+'</span><div><div class="num">'+g+'</div>'+
+          '<div class="hint">'+heatLabel(p)+' · '+(hit?'within 1%':p.toFixed(p<10?1:0)+'% off')+'</div>'+
+          '<div class="heat"><i style="width:'+(8+close*92)+'%;background:'+heatColor(close)+'"></i></div></div>'+
+          '<span class="tag '+(hit?'hit':v<ANSWER?'up':'down')+'">'+(hit?'Got it':v<ANSWER?'Go higher':'Go lower')+'</span>';
+      }
+      rowsEl.appendChild(d);
+    }
+    if(state.done){
+      goEl.disabled=true;guessEl.disabled=true;resEl.classList.add('show');
+      document.getElementById('rtitle').textContent=state.won?'Sweet! Solved in '+state.guesses.length+'.':'Out of guesses.';
+      document.getElementById('rbody').textContent='The jar held '+fmt(ANSWER)+' jelly beans. Come back at midnight ET for a new jar.';
+    }
+  }
+
+  document.getElementById('form').addEventListener('submit',function(e){
+    e.preventDefault();
+    if(state.done)return;
+    var v=guessEl.value.trim();
+    if(!/^\d{5}$/.test(v)){errEl.textContent='Enter exactly 5 digits, like 04250 or 18000.';return}
+    if(+v>30000){errEl.textContent='Every jar holds 30,000 beans or fewer. Try a lower number.';return}
+    errEl.textContent='';
+    state.guesses.push(v);
+    if(pct(+v)<=1){state.done=true;state.won=true}
+    else if(state.guesses.length>=MAX){state.done=true}
+    save();guessEl.value='';render(true);
+    if(!state.done)guessEl.focus();
+  });
+  guessEl.addEventListener('input',function(){guessEl.value=guessEl.value.replace(/\D/g,'').slice(0,5);errEl.textContent=''});
+
+  document.getElementById('share').addEventListener('click',function(){
+    var lines=state.guesses.map(function(g){var p=pct(+g);return p<=1?'🟢':p<10?'🟠':p<35?'🟡':'🔵'}).join('');
+    var txt='Bean Count #'+jarNo+' '+(state.won?state.guesses.length:'X')+'/'+MAX+'\n'+lines;
+    var b=this;
+    try{navigator.clipboard.writeText(txt).then(function(){b.textContent='Copied'},function(){b.textContent=txt})}catch(e){b.textContent='Copy blocked'}
+  });
+
+  /* ---------- tabs ---------- */
+  var tp=document.getElementById('tab-play'),tl=document.getElementById('tab-lb'),vp=document.getElementById('view-play'),vl=document.getElementById('view-lb');
+  function show(which){
+    var lb=which==='lb';
+    vp.hidden=lb;vl.hidden=!lb;
+    tp.setAttribute('aria-selected',!lb);tl.setAttribute('aria-selected',lb);
+    if(lb)buildLB();
+  }
+  tp.onclick=function(){show('play')};tl.onclick=function(){show('lb')};
+
+  /* ---------- leaderboard (sample data) ---------- */
+  var names=['jellyfan','BeanQueen','sugarrush','ChewyChad','gumdrop_gal','Marlow','skittlesQ','tooth_fairy','nana_b','calcPat','OwenW','lollipopLou','TheCounter','mintyfresh','bean.there','rosa_k','Dex','PixelPete','candycane','honeybun'];
+  var data=null;
+  function buildLB(){
+    var r=rng(seed^0x51ed270b), rows=[];
+    for(var i=0;i<150;i++){
+      var tries=r()<.06?1:r()<.22?2:r()<.5?3:r()<.8?4:5;
+      var off=r()*(tries===1?1:1)*1;
+      rows.push({name:names[Math.floor(r()*names.length)]+Math.floor(r()*900+10),tries:tries,off:off,t:r()});
+    }
+    if(state.done&&state.won){
+      var me=state.guesses[state.guesses.length-1];
+      rows.push({name:'You',tries:state.guesses.length,off:pct(+me),t:.5,me:true});
+    }
+    rows.sort(function(a,b){return a.tries-b.tries||a.off-b.off||a.t-b.t});
+    rows=rows.slice(0,150);
+    var counts=[0,0,0,0,0,0];rows.forEach(function(x){counts[x.tries]++});
+    document.getElementById('pills').innerHTML=
+      '<div class="pill"><b>8,412</b>players today</div>'+
+      '<div class="pill"><b>'+counts[1]+'</b>in one guess</div>'+
+      '<div class="pill"><b>'+counts[2]+'</b>in two</div>'+
+      '<div class="pill"><b>'+counts[3]+'</b>in three</div>';
+    var h='';
+    rows.forEach(function(x,i){
+      var rk=i+1,m=rk<4?'<span class="medal m'+rk+'">'+rk+'</span>':rk;
+      var dots='';for(var d=0;d<5;d++)dots+=d<x.tries?'●':'○';
+      h+='<tr'+(x.me?' class="me"':'')+'><td>'+m+'</td><td>'+x.name+'</td><td><span class="dots">'+dots+'</span> '+x.tries+'</td><td class="r">'+x.off.toFixed(2)+'%</td></tr>';
+    });
+    document.getElementById('lbody').innerHTML=h;
+  }
+
+  document.getElementById('who').addEventListener('click',function(){
+    this.textContent=this.textContent.indexOf('guest')>-1?'Signed in (preview)':'Playing as guest';
+  });
+
+  render(false);
+})();
+</script>
+</body>
+</html>
